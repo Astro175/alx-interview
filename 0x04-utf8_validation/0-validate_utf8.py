@@ -1,58 +1,38 @@
 #!/usr/bin/python3
+"""
+utf-8 interview challenge
+"""
 
-"""
-   A module that determines if a given data set represents
-   a valid UTF-8 encoding.
-"""
 
 def validUTF8(data):
     """
-    A method that determines if a given data set represents
-    a valid UTF-8 encoding
+    Validates if a dataset is valid utf-8
     """
-    NUMBER_OF_BITS_PER_BLOCK = 8
-    MAX_NUMBER_OF_ONES = 4
-    index = 0
-    while index < len(data):
-        number = data[index] & (2 ** 7)
-        number >>= (NUMBER_OF_BITS_PER_BLOCK - 1)
-        if number == 0:  # single byte char
-            index += 1
-            continue
+    expected_continuation_bytes = 0
 
-            # validate multi-byte char
-        number_of_ones = 0
-        while True:  # get the number of significant ones
-            number = data[index] & (2 ** (7 - number_of_ones))
-            number >>= (NUMBER_OF_BITS_PER_BLOCK - number_of_ones - 1)
-            if number == 1:
-                number_of_ones += 1
-            else:
-                break
+    UTF8_BIT_1 = 1 << 7
+    UTF8_BIT_2 = 1 << 6
 
-            if number_of_ones > MAX_NUMBER_OF_ONES:
-                return False  # too much ones per char sequence
+    for byte in data:
+        leading_one_mask = 1 << 7
 
-            if number_of_ones == 1:
-                return False  # there has to be at least 2 ones
+        if expected_continuation_bytes == 0:
+            while leading_one_mask & byte:
+                expected_continuation_bytes += 1
+                leading_one_mask = leading_one_mask >> 1
 
-            index += 1  # move on to check the next byte in a multi-byte char sequence
+            if expected_continuation_bytes == 0:
+                continue
 
-            # check for out of bounds and exit early
-            if index >= len(data) or index >= (index + number_of_ones - 1):
-                return False  
+            if expected_continuation_bytes == 1 or\
+                    expected_continuation_bytes > 4:
+                return False
+        else:
+            if not (byte & UTF8_BIT_1 and not (byte & UTF8_BIT_2)):
+                return False
 
-            # every next byte has to start with "10"
-            for i in range(index, index + number_of_ones - 1):
-                number = data[i]
-
-                number >>= (NUMBER_OF_BITS_PER_BLOCK - 1)
-                if number != 1:
-                    return False
-                number >>= (NUMBER_OF_BITS_PER_BLOCK - 1)
-                if number != 0:
-                    return False
-
-                index += 1
-
+        expected_continuation_bytes -= 1
+    if expected_continuation_bytes == 0:
         return True
+    else:
+        return False
